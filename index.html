@@ -1,0 +1,2524 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiquidGlass Forum - 液态玻璃社区</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.0.3"></script>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-mid: #1a1a2e;
+      --bg-light: #16213e;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-bg-hover: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-border-hover: rgba(255, 255, 255, 0.2);
+      --glass-blur: blur(20px);
+      --accent-cyan: #00d4ff;
+      --accent-magenta: #ff006e;
+      --accent-purple: #8b5cf6;
+      --accent-green: #22c55e;
+      --text-primary: rgba(255, 255, 255, 0.95);
+      --text-secondary: rgba(255, 255, 255, 0.6);
+      --text-tertiary: rgba(255, 255, 255, 0.4);
+      --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --shadow-glow-cyan: 0 0 30px rgba(0, 212, 255, 0.3);
+      --shadow-glow-magenta: 0 0 30px rgba(255, 0, 110, 0.3);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --radius-pill: 100px;
+      --radius-message: 20px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    #particleCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -3;
+      background: linear-gradient(180deg, #0a0a12 0%, #0d0d1a 50%, #12101f 100%);
+    }
+
+    .bg-mesh {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -2;
+      background: 
+        radial-gradient(ellipse at 30% 30%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 80%, rgba(255, 0, 110, 0.05) 0%, transparent 40%),
+        linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+    }
+
+    .caustics {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .caustics svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Navigation */
+    .nav {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-pill);
+      padding: 4px 8px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-glass);
+      animation: slideDown 0.6s ease-out;
+      height: 56px;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 20px;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 18px;
+      color: white;
+    }
+
+    .nav-logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-search {
+      position: relative;
+      flex: 1;
+      max-width: 320px;
+    }
+
+    .nav-search input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-pill);
+      padding: 10px 16px 10px 42px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .nav-search input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .nav-search input:focus {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+    }
+
+    .nav-search i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-tertiary);
+      font-size: 18px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+
+    .nav-btn .badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      background: var(--accent-magenta);
+      border-radius: 50%;
+    }
+
+    .nav-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .nav-avatar svg {
+      width: 70%;
+      height: 70%;
+    }
+
+    .nav-avatar:hover {
+      border-color: var(--accent-cyan);
+      box-shadow: var(--shadow-glow-cyan);
+    }
+
+    .nav-avatar-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .settings-panel.active {
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    .settings-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .settings-panel.active .settings-backdrop {
+      opacity: 1;
+    }
+
+    .settings-content {
+      position: absolute;
+      top: 100px;
+      right: 20px;
+      width: 360px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-glass);
+      transform: translateX(120%) translateY(-20px);
+      opacity: 0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .settings-panel.active .settings-content {
+      transform: translateX(0) translateY(0);
+      opacity: 1;
+    }
+
+    .settings-panel.closing .settings-content {
+      transform: translateX(120%) translateY(-20px);
+      opacity: 0;
+    }
+
+    .settings-header {
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--glass-border);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .settings-avatar svg {
+      width: 65%;
+      height: 65%;
+    }
+
+    .settings-user-info {
+      flex: 1;
+    }
+
+    .settings-name-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+
+    .settings-edit-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .settings-edit-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    .settings-status {
+      font-size: 12px;
+      color: var(--accent-green);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+    }
+
+    .settings-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent-green);
+      border-radius: 50%;
+      animation: livePulse 1.5s infinite;
+    }
+
+    .settings-close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .settings-close-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    .settings-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .settings-section:last-of-type {
+      border-bottom: none;
+    }
+
+    .settings-section-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .settings-section-title i {
+      color: var(--accent-cyan);
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .theme-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 12px 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--glass-border-hover);
+    }
+
+    .theme-card.active {
+      background: rgba(0, 212, 255, 0.1);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+    }
+
+    .theme-preview {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    .theme-card span {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    .theme-card.active span {
+      color: var(--accent-cyan);
+    }
+
+    .name-edit-container {
+      display: flex;
+      gap: 8px;
+    }
+
+    .name-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .name-input:focus {
+      border-color: var(--accent-cyan);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .name-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .name-save-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .name-save-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+    }
+
+    .settings-actions {
+      padding: 12px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .settings-action-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    .settings-action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--glass-border-hover);
+      color: var(--text-primary);
+    }
+
+    .settings-action-btn i {
+      color: var(--accent-cyan);
+    }
+
+    /* Main Layout */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 100px 24px 60px;
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 32px;
+    }
+
+    /* Glass Card */
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-glass);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    }
+
+    .glass-card:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-hover);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-glass), 0 20px 60px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Public Chat Room */
+    .public-chat {
+      margin-bottom: 32px;
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    .public-chat .glass-card {
+      padding: 0;
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(139, 92, 246, 0.08));
+      overflow: hidden;
+    }
+
+    .public-chat-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .public-chat-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .public-chat-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .public-chat-info h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-primary);
+    }
+
+    .public-chat-info span {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .public-chat-info span::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      animation: livePulse 1.5s infinite;
+    }
+
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.8); }
+    }
+
+    .public-chat-users {
+      display: flex;
+      align-items: center;
+    }
+
+    .chat-user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      border: 2px solid var(--bg-dark);
+      margin-left: -8px;
+      flex-shrink: 0;
+      color: white;
+    }
+
+    .chat-user-avatar:first-child {
+      margin-left: 0;
+    }
+
+    .chat-user-count {
+      margin-left: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .public-messages {
+      height: 260px;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .public-message {
+      display: flex;
+      gap: 10px;
+      animation: msgSlide 0.3s ease-out;
+    }
+
+    @keyframes msgSlide {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .public-message .msg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      flex-shrink: 0;
+      color: white;
+    }
+
+    .public-message-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .public-message-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .public-message-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+
+    .public-message-time {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+
+    .public-message-text {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .public-message-text .highlight {
+      color: var(--accent-cyan);
+      font-weight: 500;
+    }
+
+    .public-input-area {
+      padding: 12px 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .public-input-wrapper {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .public-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 10px 16px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    .public-input:focus {
+      border-color: var(--accent-cyan);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .public-input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .public-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .public-send-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+    }
+
+    .public-send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Categories */
+    .categories {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.6s ease-out 0.1s both;
+    }
+
+    .category-pill {
+      padding: 10px 20px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-pill);
+      color: var(--text-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .category-pill:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-hover);
+      color: var(--text-primary);
+    }
+
+    .category-pill.active {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(139, 92, 246, 0.2));
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      box-shadow: var(--shadow-glow-cyan);
+    }
+
+    .category-pill i {
+      font-size: 16px;
+    }
+
+    /* Posts */
+    .posts {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .post {
+      animation: fadeInUp 0.6s ease-out both;
+    }
+
+    .post:nth-child(1) { animation-delay: 0.1s; }
+    .post:nth-child(2) { animation-delay: 0.2s; }
+    .post:nth-child(3) { animation-delay: 0.3s; }
+    .post:nth-child(4) { animation-delay: 0.4s; }
+
+    .post-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .post-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      flex-shrink: 0;
+      color: white;
+    }
+
+    .post-meta {
+      flex: 1;
+    }
+
+    .post-author {
+      font-weight: 600;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .post-time {
+      font-size: 13px;
+      color: var(--text-tertiary);
+    }
+
+    .post-tag {
+      padding: 4px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .post-tag.tech {
+      background: rgba(0, 212, 255, 0.15);
+      color: var(--accent-cyan);
+    }
+
+    .post-tag.design {
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--accent-purple);
+    }
+
+    .post-tag.life {
+      background: rgba(255, 0, 110, 0.15);
+      color: var(--accent-magenta);
+    }
+
+    .post-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      margin-bottom: 12px;
+      line-height: 1.3;
+      transition: color 0.3s ease;
+    }
+
+    .post:hover .post-title {
+      color: var(--accent-cyan);
+    }
+
+    .post-content {
+      color: var(--text-secondary);
+      font-size: 15px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .post-image {
+      width: 100%;
+      height: 180px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      object-fit: cover;
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(139,92,246,0.2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .post-image i {
+      font-size: 48px;
+      color: rgba(255,255,255,0.3);
+    }
+
+    .post-footer {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .post-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-tertiary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      border: none;
+    }
+
+    .post-action:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+
+    .post-action.like:hover {
+      color: var(--accent-magenta);
+    }
+
+    .post-action.like.liked {
+      color: var(--accent-magenta);
+    }
+
+    .post-action.like.liked i {
+      animation: heartPulse 0.4s ease;
+    }
+
+    @keyframes heartPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+
+    .post-action i {
+      font-size: 20px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-section {
+      animation: fadeInUp 0.6s ease-out 0.2s both;
+    }
+
+    .sidebar-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-title i {
+      color: var(--accent-cyan);
+    }
+
+    /* Trending Topics */
+    .trending-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 8px;
+      background: transparent;
+      border: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .trending-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .trending-rank {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-tertiary);
+      min-width: 28px;
+    }
+
+    .trending-item:hover .trending-rank {
+      color: var(--accent-cyan);
+    }
+
+    .trending-content {
+      flex: 1;
+    }
+
+    .trending-topic {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: var(--text-primary);
+    }
+
+    .trending-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    /* Online Users */
+    .online-users {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .online-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      border: 2px solid transparent;
+      flex-shrink: 0;
+      color: white;
+    }
+
+    .online-avatar:hover {
+      transform: scale(1.1);
+      border-color: var(--accent-cyan);
+    }
+
+    .online-avatar::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 10px;
+      height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+      border: 2px solid var(--bg-dark);
+    }
+
+    /* Quick Actions */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .quick-action {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 16px;
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .quick-action:hover {
+      background: var(--glass-bg-hover);
+      border-color: var(--glass-border-hover);
+      transform: translateY(-2px);
+    }
+
+    .quick-action i {
+      font-size: 24px;
+      color: var(--accent-cyan);
+    }
+
+    .quick-action span {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 32px;
+      right: 32px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-glass), var(--shadow-glow-cyan);
+      transition: all 0.3s ease;
+      z-index: 999;
+    }
+
+    .fab:hover {
+      transform: scale(1.1) rotate(90deg);
+      box-shadow: var(--shadow-glass), 0 0 50px rgba(0, 212, 255, 0.5);
+    }
+
+    .fab i {
+      font-size: 28px;
+      color: white;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 24px;
+      color: var(--text-tertiary);
+      font-size: 13px;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--accent-cyan);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        order: -1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav {
+        width: calc(100% - 32px);
+        padding: 6px;
+      }
+      
+      .nav-logo-text {
+        display: none;
+      }
+      
+      .nav-search {
+        max-width: 200px;
+      }
+      
+      .main {
+        padding: 90px 16px 40px;
+      }
+      
+      .fab {
+        bottom: 24px;
+        right: 24px;
+        width: 54px;
+        height: 54px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="particleCanvas"></canvas>
+  <div class="bg-mesh"></div>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-icon">LG</div>
+      <span class="nav-logo-text">LiquidGlass</span>
+    </a>
+    <div class="nav-search">
+      <i class="ph ph-magnifying-glass"></i>
+      <input type="text" placeholder="搜索话题、用户或内容...">
+    </div>
+    <div class="nav-actions">
+      <button class="nav-btn">
+        <i class="ph ph-bell"></i>
+        <span class="badge"></span>
+      </button>
+      <button class="nav-btn">
+        <i class="ph ph-chat-circle"></i>
+      </button>
+      <button class="nav-avatar-btn" id="navAvatarBtn">
+        <div class="nav-avatar">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" stroke="var(--accent-cyan)" stroke-width="2" fill="none"/>
+            <text id="navAvatarText" x="50" y="58" text-anchor="middle" font-size="36" font-weight="bold" fill="var(--accent-cyan)">林</text>
+          </svg>
+        </div>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-backdrop" id="settingsBackdrop"></div>
+    <div class="settings-content">
+      <div class="settings-header">
+        <div class="settings-avatar" id="settingsAvatar">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" stroke="var(--accent-cyan)" stroke-width="2" fill="none"/>
+            <text id="settingsAvatarText" x="50" y="58" text-anchor="middle" font-size="36" font-weight="bold" fill="var(--accent-cyan)">林</text>
+          </svg>
+        </div>
+        <div class="settings-user-info">
+          <div class="settings-name-wrapper">
+            <span class="settings-name" id="settingsName">林清风</span>
+            <button class="settings-edit-btn" id="editNameBtn">
+              <i class="ph ph-pencil"></i>
+            </button>
+          </div>
+          <span class="settings-status">在线</span>
+        </div>
+        <button class="settings-close-btn" id="settingsCloseBtn">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      
+      <div class="settings-section">
+        <h4 class="settings-section-title">
+          <i class="ph ph-palette"></i>
+          主题切换
+        </h4>
+        <div class="theme-grid" id="themeGrid">
+          <button class="theme-card active" data-theme="cyan-purple">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #00d4ff, #8b5cf6);"></div>
+            <span>蓝紫渐变</span>
+          </button>
+          <button class="theme-card" data-theme="pink-rose">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #f093fb, #f5576c);"></div>
+            <span>粉玫渐变</span>
+          </button>
+          <button class="theme-card" data-theme="blue-cyan">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #4facfe, #00f2fe);"></div>
+            <span>青蓝渐变</span>
+          </button>
+          <button class="theme-card" data-theme="green-teal">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #43e97b, #38f9d7);"></div>
+            <span>翠绿渐变</span>
+          </button>
+          <button class="theme-card" data-theme="orange-amber">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);"></div>
+            <span>暖橙渐变</span>
+          </button>
+          <button class="theme-card" data-theme="violet-pink">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);"></div>
+            <span>紫罗兰渐变</span>
+          </button>
+          <button class="theme-card" data-theme="white">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #ffffff, #f0f0f0);"></div>
+            <span>纯净白</span>
+          </button>
+          <button class="theme-card" data-theme="black">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #1a1a2e, #16213e);"></div>
+            <span>深邃黑</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <h4 class="settings-section-title">
+          <i class="ph ph-user"></i>
+          编辑名称
+        </h4>
+        <div class="name-edit-container">
+          <input type="text" class="name-input" id="nameInput" placeholder="输入新名称">
+          <button class="name-save-btn" id="saveNameBtn">
+            <i class="ph ph-check"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="settings-action-btn">
+          <i class="ph ph-user-circle"></i>
+          <span>个人资料</span>
+        </button>
+        <button class="settings-action-btn">
+          <i class="ph ph-settings"></i>
+          <span>系统设置</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Feed Column -->
+    <div class="feed">
+      <!-- Public Chat Room -->
+      <section class="public-chat">
+        <div class="glass-card">
+          <div class="public-chat-header">
+            <div class="public-chat-title">
+              <div class="public-chat-icon">
+                <i class="ph ph-users-three"></i>
+              </div>
+              <div class="public-chat-info">
+                <h3>公共聊天室</h3>
+                <span>实时在线</span>
+              </div>
+            </div>
+            <div class="public-chat-users">
+              <div class="chat-user-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">张</div>
+              <div class="chat-user-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c);">苏</div>
+              <div class="chat-user-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">陈</div>
+              <div class="chat-user-avatar" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">王</div>
+              <span class="chat-user-count">+2.8k</span>
+            </div>
+          </div>
+          <div class="public-messages" id="publicMessages">
+            <div class="public-message">
+              <div class="msg-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">张</div>
+              <div class="public-message-content">
+                <div class="public-message-header">
+                  <span class="public-message-name">张明远</span>
+                  <span class="public-message-time">刚刚</span>
+                </div>
+                <div class="public-message-text">有人看过 iOS 18 的新设计吗？<span class="highlight">#液态玻璃</span> 效果太惊艳了</div>
+              </div>
+            </div>
+            <div class="public-message">
+              <div class="msg-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c);">苏</div>
+              <div class="public-message-content">
+                <div class="public-message-header">
+                  <span class="public-message-name">苏雨桐</span>
+                  <span class="public-message-time">2分钟前</span>
+                </div>
+                <div class="public-message-text">确实！感觉苹果这次把毛玻璃提升到了新高度</div>
+              </div>
+            </div>
+            <div class="public-message">
+              <div class="msg-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">陈</div>
+              <div class="public-message-content">
+                <div class="public-message-header">
+                  <span class="public-message-name">陈思睿</span>
+                  <span class="public-message-time">2分钟前</span>
+                </div>
+                <div class="public-message-text">那个光线折射的焦散效果是怎么实现的？有人研究过吗</div>
+              </div>
+            </div>
+            <div class="public-message">
+              <div class="msg-avatar" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">王</div>
+              <div class="public-message-content">
+                <div class="public-message-header">
+                  <span class="public-message-name">王浩宇</span>
+                  <span class="public-message-time">1分钟前</span>
+                </div>
+                <div class="public-message-text">看起来是用 Metal 着色器做的，CSS 应该也能模拟类似的 <span class="highlight">backdrop-filter</span> 效果</div>
+              </div>
+            </div>
+          </div>
+          <div class="public-input-area">
+            <div class="public-input-wrapper">
+              <input type="text" class="public-input" id="publicInput" placeholder="参与讨论...">
+              <button class="public-send-btn" id="publicSendBtn" disabled>
+                <i class="ph ph-paper-plane-tilt"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Categories -->
+      <div class="categories">
+        <button class="category-pill active">
+          <i class="ph ph-fire"></i>
+          热门
+        </button>
+        <button class="category-pill">
+          <i class="ph ph-code"></i>
+          技术
+        </button>
+        <button class="category-pill">
+          <i class="ph ph-palette"></i>
+          设计
+        </button>
+        <button class="category-pill">
+          <i class="ph ph-lightbulb"></i>
+          创意
+        </button>
+        <button class="category-pill">
+          <i class="ph ph-sparkle"></i>
+          科技
+        </button>
+      </div>
+
+      <!-- Posts -->
+      <div class="posts">
+        <article class="post glass-card">
+          <div class="post-header">
+            <div class="post-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">张</div>
+            <div class="post-meta">
+              <div class="post-author">张明远 <span class="post-tag tech">技术</span></div>
+              <div class="post-time">12 分钟前 · iOS 开发</div>
+            </div>
+          </div>
+          <h3 class="post-title">SwiftUI 4.0 的液态玻璃组件实现解析</h3>
+          <p class="post-content">深入分析 Apple 在 iOS 18 中引入的全新 glass 修饰器实现原理，探索如何通过 Metal 着色器实现真实的光线折射效果，以及我们在第三方应用中复现这一效果的可行方案...</p>
+          <div class="post-image">
+            <i class="ph ph-code"></i>
+          </div>
+          <div class="post-footer">
+            <button class="post-action like">
+              <i class="ph ph-heart"></i>
+              <span>328</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-chat-circle"></i>
+              <span>56</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-share-network"></i>
+              <span>分享</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-bookmark"></i>
+            </button>
+          </div>
+        </article>
+
+        <article class="post glass-card">
+          <div class="post-header">
+            <div class="post-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c);">苏</div>
+            <div class="post-meta">
+              <div class="post-author">苏雨桐 <span class="post-tag design">设计</span></div>
+              <div class="post-time">38 分钟前 · UI/UX</div>
+            </div>
+          </div>
+          <h3 class="post-title">从毛玻璃到液态玻璃：iOS 设计语言的演进之路</h3>
+          <p class="post-content">回顾 Apple 设计系统从 iOS 7 毛玻璃开始，到 iOS 15 半透明化，再到如今液态玻璃的完整演进过程。分析每个阶段的设计决策背后的用户心理和交互考量...</p>
+          <div class="post-footer">
+            <button class="post-action like">
+              <i class="ph ph-heart"></i>
+              <span>892</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-chat-circle"></i>
+              <span>124</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-share-network"></i>
+              <span>分享</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-bookmark"></i>
+            </button>
+          </div>
+        </article>
+
+        <article class="post glass-card">
+          <div class="post-header">
+            <div class="post-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">陈</div>
+            <div class="post-meta">
+              <div class="post-author">陈思睿 <span class="post-tag life">生活</span></div>
+              <div class="post-time">1 小时前 · 数码</div>
+            </div>
+          </div>
+          <h3 class="post-title">使用 iOS 18 Beta 三周后的真实体验</h3>
+          <p class="post-content">作为一个普通用户，分享这三周在 iPhone 15 Pro Max 上使用 iOS 18 Beta 的日常体验。液态玻璃效果在续航、性能和日常使用中的实际表现如何？</p>
+          <div class="post-footer">
+            <button class="post-action like">
+              <i class="ph ph-heart"></i>
+              <span>2.1k</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-chat-circle"></i>
+              <span>289</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-share-network"></i>
+              <span>分享</span>
+            </button>
+            <button class="post-action">
+              <i class="ph ph-bookmark"></i>
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section glass-card">
+        <h3 class="sidebar-title">
+          <i class="ph ph-trending-up"></i>
+          热门话题
+        </h3>
+        <button class="trending-item">
+          <span class="trending-rank">1</span>
+          <div class="trending-content">
+            <div class="trending-topic">#iOS18液态玻璃</div>
+            <div class="trending-meta">12.4k 讨论</div>
+          </div>
+        </button>
+        <button class="trending-item">
+          <span class="trending-rank">2</span>
+          <div class="trending-content">
+            <div class="trending-topic">#WWDC2024</div>
+            <div class="trending-meta">8.7k 讨论</div>
+          </div>
+        </button>
+        <button class="trending-item">
+          <span class="trending-rank">3</span>
+          <div class="trending-content">
+            <div class="trending-topic">#设计趋势</div>
+            <div class="trending-meta">5.2k 讨论</div>
+          </div>
+        </button>
+        <button class="trending-item">
+          <span class="trending-rank">4</span>
+          <div class="trending-content">
+            <div class="trending-topic">#AppleIntelligence</div>
+            <div class="trending-meta">4.8k 讨论</div>
+          </div>
+        </button>
+        <button class="trending-item">
+          <span class="trending-rank">5</span>
+          <div class="trending-content">
+            <div class="trending-topic">#SwiftUI</div>
+            <div class="trending-meta">3.9k 讨论</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="sidebar-section glass-card">
+        <h3 class="sidebar-title">
+          <i class="ph ph-users"></i>
+          在线用户
+        </h3>
+        <div class="online-users">
+          <div class="online-avatar" style="background: linear-gradient(135deg, #667eea, #764ba2);">张</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #f093fb, #f5576c);">苏</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">陈</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">王</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #fa709a, #fee140);">刘</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #a18cd1, #fbc2eb);">周</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #ff9a9e, #fecfef);">吴</div>
+          <div class="online-avatar" style="background: linear-gradient(135deg, #ffecd2, #fcb69f);">郑</div>
+        </div>
+        <div style="margin-top: 16px; font-size: 13px; color: var(--text-tertiary);">
+          <span style="color: #22c55e;">●</span> 2,847 人在线
+        </div>
+      </div>
+
+      <div class="sidebar-section glass-card">
+        <h3 class="sidebar-title">
+          <i class="ph ph-lightning"></i>
+          快捷操作
+        </h3>
+        <div class="quick-actions">
+          <button class="quick-action">
+            <i class="ph ph-pencil-simple"></i>
+            <span>发帖子</span>
+          </button>
+          <button class="quick-action">
+            <i class="ph ph-camera"></i>
+            <span>发图片</span>
+          </button>
+          <button class="quick-action">
+            <i class="ph ph-video-camera"></i>
+            <span>发视频</span>
+          </button>
+          <button class="quick-action">
+            <i class="ph ph-link"></i>
+            <span>分享链接</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab">
+    <i class="ph ph-plus"></i>
+  </button>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-links">
+      <a href="#">关于</a>
+      <a href="#">隐私政策</a>
+      <a href="#">使用条款</a>
+      <a href="#">联系我们</a>
+    </div>
+    <p>© 2024 LiquidGlass Forum. All rights reserved.</p>
+  </footer>
+
+  <script>
+    // Cosmic Universe Starfield System
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let stars = [];
+    let shootingStars = [];
+    let nebulae = [];
+    let dustClouds = [];
+    let galaxyClusters = [];
+    let time = 0;
+    let animationId;
+
+    const config = {
+      starCount: 300,
+      nebulaCount: 8,
+      dustCount: 15,
+      galaxyCount: 3,
+      shootingStarInterval: 4000
+    };
+
+    // Star types with realistic characteristics
+    const starTypes = [
+      { weight: 60, color: { r: 255, g: 255, b: 255 }, name: 'white' },
+      { weight: 15, color: { r: 200, g: 210, b: 255 }, name: 'blue-white' },
+      { weight: 10, color: { r: 255, g: 240, b: 200 }, name: 'yellow' },
+      { weight: 8, color: { r: 255, g: 200, b: 150 }, name: 'orange' },
+      { weight: 5, color: { r: 255, g: 180, b: 180 }, name: 'red' },
+      { weight: 2, color: { r: 180, g: 200, b: 255 }, name: 'blue' }
+    ];
+
+    function getRandomStarType() {
+      const total = starTypes.reduce((sum, t) => sum + t.weight, 0);
+      let random = Math.random() * total;
+      for (const type of starTypes) {
+        random -= type.weight;
+        if (random <= 0) return type;
+      }
+      return starTypes[0];
+    }
+
+    class Star {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.z = Math.random() * 4;
+        this.type = getRandomStarType();
+        this.baseSize = Math.random() * 2.5 + 0.3;
+        this.size = this.baseSize;
+        this.twinkleSpeed = Math.random() * 0.0008 + 0.0002;
+        this.twinkleOffset = Math.random() * Math.PI * 2;
+        this.baseAlpha = Math.random() * 0.5 + 0.5;
+        this.alpha = this.baseAlpha;
+        this.twinkleAmount = Math.random() * 0.3 + 0.1;
+        this.hasBurst = Math.random() > 0.6;
+        this.burstPhase = Math.random() * Math.PI * 2;
+        this.burstSpeed = Math.random() * 0.0008 + 0.0003;
+        this.driftX = (Math.random() - 0.5) * 0.02;
+        this.driftY = (Math.random() - 0.5) * 0.01;
+      }
+
+      update(dt) {
+        this.x += this.driftX;
+        this.y += this.driftY;
+
+        if (this.x < -10) this.x = width + 10;
+        if (this.x > width + 10) this.x = -10;
+        if (this.y < -10) this.y = height + 10;
+        if (this.y > height + 10) this.y = -10;
+
+        if (this.hasBurst) {
+          const burst = Math.sin(time * this.burstSpeed + this.burstPhase);
+          const burstMod = Math.max(0, burst) * 0.8;
+          const twinkle = Math.sin(time * this.twinkleSpeed + this.twinkleOffset);
+          const extraTwinkle = Math.sin(time * this.twinkleSpeed * 2.3 + this.twinkleOffset * 1.7);
+          this.alpha = this.baseAlpha * (1 - this.twinkleAmount + (twinkle + extraTwinkle * 0.3) * (this.twinkleAmount + burstMod));
+          this.size = this.baseSize * (0.9 + twinkle * 0.1 + burstMod * 0.3);
+        } else {
+          const twinkle = Math.sin(time * this.twinkleSpeed + this.twinkleOffset);
+          const extraTwinkle = Math.sin(time * this.twinkleSpeed * 2.3 + this.twinkleOffset * 1.7);
+          this.alpha = this.baseAlpha * (1 - this.twinkleAmount + (twinkle + extraTwinkle * 0.3) * this.twinkleAmount);
+          this.size = this.baseSize * (0.9 + twinkle * 0.1);
+        }
+      }
+
+      draw() {
+        const { r, g, b } = this.type.color;
+
+        // Diffraction spike glow for larger stars
+        if (this.size > 1.5 && this.z < 2) {
+          this.drawDiffractionGlow(r, g, b);
+        }
+
+        // Core glow
+        const gradient = ctx.createRadialGradient(
+          this.x, this.y, 0,
+          this.x, this.y, this.size * 5
+        );
+        gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${this.alpha})`);
+        gradient.addColorStop(0.2, `rgba(${r}, ${g}, ${b}, ${this.alpha * 0.6})`);
+        gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${this.alpha * 0.2})`);
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 5, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Bright core
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha * 0.9})`;
+        ctx.fill();
+      }
+
+      drawDiffractionGlow(r, g, b) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha * 0.3;
+
+        // Horizontal spike
+        const gradientH = ctx.createLinearGradient(
+          this.x - this.size * 8, this.y,
+          this.x + this.size * 8, this.y
+        );
+        gradientH.addColorStop(0, 'transparent');
+        gradientH.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
+        gradientH.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradientH;
+        ctx.fillRect(this.x - this.size * 8, this.y - 0.5, this.size * 16, 1);
+
+        // Vertical spike
+        const gradientV = ctx.createLinearGradient(
+          this.x, this.y - this.size * 8,
+          this.x, this.y + this.size * 8
+        );
+        gradientV.addColorStop(0, 'transparent');
+        gradientV.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
+        gradientV.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradientV;
+        ctx.fillRect(this.x - 0.5, this.y - this.size * 8, 1, this.size * 16);
+
+        ctx.restore();
+      }
+    }
+
+    class Nebula {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.baseRadius = Math.random() * 400 + 200;
+        this.radius = this.baseRadius;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.0001;
+        this.alpha = Math.random() * 0.15 + 0.05;
+        this.layers = Math.floor(Math.random() * 3) + 2;
+        this.hue = Math.random() * 360;
+      }
+
+      update() {
+        this.rotation += this.rotationSpeed;
+        this.x += 0.02;
+        if (this.x > width + this.radius) {
+          this.x = -this.radius;
+        }
+      }
+
+      draw() {
+        const cyan = getComputedStyle(document.documentElement).getPropertyValue('--accent-cyan').trim() || '#00d4ff';
+        const purple = getComputedStyle(document.documentElement).getPropertyValue('--accent-purple').trim() || '#8b5cf6';
+
+        const cyanRGB = hexToRgb(cyan);
+        const purpleRGB = hexToRgb(purple);
+
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        for (let i = 0; i < this.layers; i++) {
+          const layerRadius = this.radius * (1 - i * 0.2);
+          const layerAlpha = this.alpha * (1 - i * 0.3);
+          const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, layerRadius);
+
+          if (i % 2 === 0) {
+            gradient.addColorStop(0, `rgba(${cyanRGB.r}, ${cyanRGB.g}, ${cyanRGB.b}, ${layerAlpha})`);
+            gradient.addColorStop(0.5, `rgba(${purpleRGB.r}, ${purpleRGB.g}, ${purpleRGB.b}, ${layerAlpha * 0.5})`);
+          } else {
+            gradient.addColorStop(0, `rgba(${purpleRGB.r}, ${purpleRGB.g}, ${purpleRGB.b}, ${layerAlpha})`);
+            gradient.addColorStop(0.5, `rgba(${cyanRGB.r}, ${cyanRGB.g}, ${cyanRGB.b}, ${layerAlpha * 0.3})`);
+          }
+          gradient.addColorStop(1, 'transparent');
+
+          ctx.beginPath();
+          ctx.arc(0, 0, layerRadius, 0, Math.PI * 2);
+          ctx.fillStyle = gradient;
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    class GalaxyCluster {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = Math.random() * 150 + 80;
+        this.rotation = Math.random() * Math.PI;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.0002;
+        this.alpha = Math.random() * 0.1 + 0.03;
+        this.armCount = Math.floor(Math.random() * 2) + 3;
+        this.starCount = Math.floor(Math.random() * 100) + 50;
+        this.hue = Math.random() * 60 + 200; // Blue-ish
+      }
+
+      update() {
+        this.rotation += this.rotationSpeed;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.globalAlpha = this.alpha;
+
+        // Draw galaxy arms
+        for (let arm = 0; arm < this.armCount; arm++) {
+          const armAngle = (arm / this.armCount) * Math.PI * 2;
+          ctx.rotate(armAngle);
+
+          for (let i = 0; i < this.starCount; i++) {
+            const distance = (i / this.starCount) * this.size;
+            const spread = Math.sin(distance / this.size * Math.PI) * 30;
+            const starX = Math.cos((i / this.starCount) * Math.PI * 4 + arm * 0.5) * spread;
+            const starY = distance;
+            const starSize = Math.random() * 1.5 + 0.5;
+            const starAlpha = (1 - i / this.starCount) * 0.8;
+
+            ctx.beginPath();
+            ctx.arc(starX, starY, starSize, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${this.hue + i}, 30%, ${70 + Math.random() * 30}%, ${starAlpha})`;
+            ctx.fill();
+          }
+        }
+
+        // Core glow
+        const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size * 0.3);
+        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${this.alpha * 2})`);
+        coreGradient.addColorStop(0.5, `hsla(${this.hue}, 50%, 80%, ${this.alpha})`);
+        coreGradient.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size * 0.3, 0, Math.PI * 2);
+        ctx.fillStyle = coreGradient;
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+
+    class DustCloud {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.radius = Math.random() * 200 + 100;
+        this.alpha = Math.random() * 0.03 + 0.01;
+        this.drift = Math.random() * 0.1 + 0.02;
+      }
+
+      update() {
+        this.x += this.drift;
+        if (this.x > width + this.radius) {
+          this.x = -this.radius;
+        }
+      }
+
+      draw() {
+        const gradient = ctx.createRadialGradient(
+          this.x, this.y, 0,
+          this.x, this.y, this.radius
+        );
+        gradient.addColorStop(0, `rgba(100, 100, 120, ${this.alpha})`);
+        gradient.addColorStop(0.5, `rgba(80, 80, 100, ${this.alpha * 0.5})`);
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+    }
+
+    class ShootingStar {
+      constructor() {
+        this.reset();
+      }
+
+      reset() {
+        const startSide = Math.floor(Math.random() * 4);
+        switch (startSide) {
+          case 0: // Top
+            this.x = Math.random() * width;
+            this.y = -50;
+            this.angle = Math.PI * 0.3 + Math.random() * Math.PI * 0.4;
+            break;
+          case 1: // Left
+            this.x = -50;
+            this.y = Math.random() * height * 0.6;
+            this.angle = Math.PI * -0.2 + Math.random() * Math.PI * 0.4;
+            break;
+          case 2: // Right
+            this.x = width + 50;
+            this.y = Math.random() * height * 0.6;
+            this.angle = Math.PI * 0.8 + Math.random() * Math.PI * 0.4;
+            break;
+          case 3: // Bottom (rare)
+            this.x = Math.random() * width;
+            this.y = height + 50;
+            this.angle = Math.PI * 1.3 + Math.random() * Math.PI * 0.4;
+            break;
+        }
+        this.length = Math.random() * 250 + 150;
+        this.speed = Math.random() * 12 + 6;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.006 + 0.004;
+        this.active = true;
+        this.trail = [];
+      }
+
+      update() {
+        if (!this.active) return;
+
+        this.trail.push({ x: this.x, y: this.y, alpha: this.alpha });
+        if (this.trail.length > 35) this.trail.shift();
+
+        this.x += Math.cos(this.angle) * this.speed;
+        this.y += Math.sin(this.angle) * this.speed;
+        this.alpha -= this.decay;
+
+        if (this.alpha <= 0 || this.x < -200 || this.x > width + 200 || this.y < -200 || this.y > height + 200) {
+          this.active = false;
+        }
+      }
+
+      draw() {
+        if (!this.active) return;
+
+        // Draw trail with fading
+        for (let i = 0; i < this.trail.length; i++) {
+          const t = this.trail[i];
+          const trailAlpha = (i / this.trail.length) * t.alpha * 0.5;
+          const trailSize = (i / this.trail.length) * 2;
+
+          ctx.beginPath();
+          ctx.arc(t.x, t.y, trailSize, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha})`;
+          ctx.fill();
+        }
+
+        // Main trail
+        const tailX = this.x - Math.cos(this.angle) * this.length;
+        const tailY = this.y - Math.sin(this.angle) * this.length;
+
+        const gradient = ctx.createLinearGradient(tailX, tailY, this.x, this.y);
+        gradient.addColorStop(0, 'transparent');
+        gradient.addColorStop(0.7, `rgba(200, 220, 255, ${this.alpha * 0.5})`);
+        gradient.addColorStop(1, `rgba(255, 255, 255, ${this.alpha})`);
+
+        ctx.beginPath();
+        ctx.moveTo(tailX, tailY);
+        ctx.lineTo(this.x, this.y);
+        ctx.strokeStyle = gradient;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Bright head
+        const headGradient = ctx.createRadialGradient(
+          this.x, this.y, 0,
+          this.x, this.y, 12
+        );
+        headGradient.addColorStop(0, `rgba(255, 255, 255, ${this.alpha})`);
+        headGradient.addColorStop(0.3, `rgba(200, 230, 255, ${this.alpha * 0.8})`);
+        headGradient.addColorStop(1, 'transparent');
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 12, 0, Math.PI * 2);
+        ctx.fillStyle = headGradient;
+        ctx.fill();
+      }
+    }
+
+    function hexToRgb(hex) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return { r, g, b };
+    }
+
+    function initStars() {
+      stars = [];
+      for (let i = 0; i < config.starCount; i++) {
+        stars.push(new Star());
+      }
+    }
+
+    function initNebulae() {
+      nebulae = [];
+      for (let i = 0; i < config.nebulaCount; i++) {
+        nebulae.push(new Nebula());
+      }
+    }
+
+    function initGalaxyClusters() {
+      galaxyClusters = [];
+      for (let i = 0; i < config.galaxyCount; i++) {
+        galaxyClusters.push(new GalaxyCluster());
+      }
+    }
+
+    function initDustClouds() {
+      dustClouds = [];
+      for (let i = 0; i < config.dustCount; i++) {
+        dustClouds.push(new DustCloud());
+      }
+    }
+
+    function spawnShootingStar() {
+      shootingStars.push(new ShootingStar());
+      if (Math.random() > 0.5) {
+        setTimeout(() => {
+          shootingStars.push(new ShootingStar());
+        }, 200 + Math.random() * 400);
+      }
+    }
+
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    let lastTime = 0;
+    let lastShootingStar = 0;
+    let nextShootingStarInterval = 1500 + Math.random() * 2000;
+
+    function animate(timestamp) {
+      lastTime = timestamp;
+      time = timestamp;
+
+      ctx.clearRect(0, 0, width, height);
+
+      for (const dust of dustClouds) {
+        dust.update();
+        dust.draw();
+      }
+
+      for (const nebula of nebulae) {
+        nebula.update();
+        nebula.draw();
+      }
+
+      for (const galaxy of galaxyClusters) {
+        galaxy.update();
+        galaxy.draw();
+      }
+
+      stars.sort((a, b) => a.z - b.z);
+      for (const star of stars) {
+        star.update();
+        star.draw();
+      }
+
+      if (timestamp - lastShootingStar > nextShootingStarInterval) {
+        spawnShootingStar();
+        lastShootingStar = timestamp;
+        nextShootingStarInterval = 1500 + Math.random() * 2500;
+      }
+
+      for (const shootingStar of shootingStars) {
+        shootingStar.update();
+        shootingStar.draw();
+      }
+
+      shootingStars = shootingStars.filter(s => s.active);
+
+      animationId = requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      initStars();
+    });
+
+    resizeCanvas();
+    initStars();
+    initNebulae();
+    initGalaxyClusters();
+    initDustClouds();
+    animate(0);
+
+    // Settings Panel
+    const navAvatarBtn = document.getElementById('navAvatarBtn');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const settingsBackdrop = document.getElementById('settingsBackdrop');
+    const settingsCloseBtn = document.getElementById('settingsCloseBtn');
+    const settingsName = document.getElementById('settingsName');
+    const editNameBtn = document.getElementById('editNameBtn');
+    const nameInput = document.getElementById('nameInput');
+    const saveNameBtn = document.getElementById('saveNameBtn');
+    const themeCards = document.querySelectorAll('.theme-card');
+
+    let isPanelOpen = false;
+
+    const themes = {
+      'cyan-purple': { cyan: '#00d4ff', purple: '#8b5cf6', magenta: '#ff006e' },
+      'pink-rose': { cyan: '#f093fb', purple: '#f5576c', magenta: '#f093fb' },
+      'blue-cyan': { cyan: '#4facfe', purple: '#00f2fe', magenta: '#00f2fe' },
+      'green-teal': { cyan: '#43e97b', purple: '#38f9d7', magenta: '#38f9d7' },
+      'orange-amber': { cyan: '#ff9a9e', purple: '#fecfef', magenta: '#ff9a9e' },
+      'violet-pink': { cyan: '#a18cd1', purple: '#fbc2eb', magenta: '#fbc2eb' },
+      'white': { cyan: '#ffffff', purple: '#f0f0f0', magenta: '#e0e0e0' },
+      'black': { cyan: '#1a1a2e', purple: '#16213e', magenta: '#0f0f1a' }
+    };
+
+    function openSettings() {
+      if (isPanelOpen) return;
+      isPanelOpen = true;
+      settingsPanel.classList.add('active');
+      settingsPanel.classList.remove('closing');
+    }
+
+    function closeSettings() {
+      if (!isPanelOpen) return;
+      settingsPanel.classList.add('closing');
+      setTimeout(() => {
+        settingsPanel.classList.remove('active', 'closing');
+        isPanelOpen = false;
+      }, 400);
+    }
+
+    function toggleSettings() {
+      if (isPanelOpen) {
+        closeSettings();
+      } else {
+        openSettings();
+      }
+    }
+
+    function applyTheme(themeKey) {
+      const theme = themes[themeKey];
+      if (!theme) return;
+
+      // Update CSS variables
+      document.documentElement.style.setProperty('--accent-cyan', theme.cyan);
+      document.documentElement.style.setProperty('--accent-purple', theme.purple);
+      document.documentElement.style.setProperty('--accent-magenta', theme.magenta);
+
+      // Update background gradient
+      document.body.style.background = `linear-gradient(135deg, ${theme.cyan}15, ${theme.purple}15)`;
+
+      // Update background mesh gradient
+      const bgMesh = document.querySelector('.bg-mesh');
+      if (bgMesh) {
+        bgMesh.style.background = `
+          radial-gradient(ellipse at 30% 30%, ${theme.cyan}15 0%, transparent 50%),
+          radial-gradient(ellipse at 70% 60%, ${theme.purple}15 0%, transparent 50%),
+          radial-gradient(ellipse at 50% 80%, ${theme.magenta}10 0%, transparent 40%),
+          linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.3) 100%)
+        `;
+      }
+
+      // Update canvas background for stars
+      canvas.style.background = `linear-gradient(180deg, #0a0a12 0%, #0d0d1a 50%, #12101f 100%)`;
+
+      // Update nav gradient
+      const navLogoIcon = document.querySelector('.nav-logo-icon');
+      if (navLogoIcon) navLogoIcon.style.background = `linear-gradient(135deg, ${theme.cyan}, ${theme.purple})`;
+      
+      // Update avatar SVG colors
+      const avatarSvgs = document.querySelectorAll('.nav-avatar svg, .settings-avatar svg');
+      avatarSvgs.forEach(svg => {
+        const circles = svg.querySelectorAll('circle');
+        const texts = svg.querySelectorAll('text');
+        
+        circles.forEach(circle => {
+          circle.setAttribute('stroke', theme.cyan);
+        });
+        texts.forEach(text => {
+          text.setAttribute('fill', theme.cyan);
+        });
+      });
+
+      // Update public chat icon
+      const publicChatIcon = document.querySelector('.public-chat-icon');
+      if (publicChatIcon) publicChatIcon.style.background = `linear-gradient(135deg, ${theme.cyan}, ${theme.purple})`;
+
+      // Update send button gradient
+      const sendBtns = document.querySelectorAll('.public-send-btn, .name-save-btn');
+      sendBtns.forEach(btn => {
+        btn.style.background = `linear-gradient(135deg, ${theme.cyan}, ${theme.purple})`;
+      });
+
+      themeCards.forEach(card => card.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    function saveName() {
+      const newName = nameInput.value.trim();
+      if (!newName) return;
+      settingsName.textContent = newName;
+      nameInput.value = '';
+      
+      // 更新头像显示第一个字符
+      updateAvatarText(newName);
+    }
+    
+    function updateAvatarText(name) {
+      const firstChar = name.charAt(0);
+      const navAvatarText = document.getElementById('navAvatarText');
+      const settingsAvatarText = document.getElementById('settingsAvatarText');
+      
+      if (navAvatarText) {
+        navAvatarText.textContent = firstChar;
+      }
+      if (settingsAvatarText) {
+        settingsAvatarText.textContent = firstChar;
+      }
+    }
+
+    navAvatarBtn.addEventListener('click', toggleSettings);
+    settingsBackdrop.addEventListener('click', closeSettings);
+    settingsCloseBtn.addEventListener('click', closeSettings);
+    editNameBtn.addEventListener('click', () => {
+      nameInput.value = settingsName.textContent;
+      nameInput.focus();
+    });
+    saveNameBtn.addEventListener('click', saveName);
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') saveName();
+    });
+
+    themeCards.forEach(card => {
+      card.addEventListener('click', () => applyTheme(card.dataset.theme));
+    });
+
+    // Public Chat Room
+    const publicInput = document.getElementById('publicInput');
+    const publicSendBtn = document.getElementById('publicSendBtn');
+    const publicMessages = document.getElementById('publicMessages');
+
+    const publicUsers = [
+      { name: '张明远', avatar: 'linear-gradient(135deg, #667eea, #764ba2)' },
+      { name: '苏雨桐', avatar: 'linear-gradient(135deg, #f093fb, #f5576c)' },
+      { name: '陈思睿', avatar: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
+      { name: '王浩宇', avatar: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
+      { name: '刘思琪', avatar: 'linear-gradient(135deg, #fa709a, #fee140)' },
+      { name: '周佳欣', avatar: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' }
+    ];
+
+    const autoReplies = [
+      '说得太对了！',
+      '我也这么觉得！',
+      '这个话题很有意思',
+      '#液态玻璃 确实很惊艳',
+      '同意楼上',
+      '学到了！',
+      '有道理',
+      '苹果设计 yyds'
+    ];
+
+    let replyIndex = 0;
+
+    publicInput.addEventListener('input', () => {
+      publicSendBtn.disabled = !publicInput.value.trim();
+    });
+
+    publicInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendPublicMessage();
+      }
+    });
+
+    publicSendBtn.addEventListener('click', sendPublicMessage);
+
+    function sendPublicMessage() {
+      const messageText = publicInput.value.trim();
+      if (!messageText) return;
+
+      const myUser = { name: '我', avatar: 'linear-gradient(135deg, #00d4ff, #ff006e)' };
+      const messageElement = document.createElement('div');
+      messageElement.className = 'public-message';
+      messageElement.innerHTML = `
+        <div class="msg-avatar" style="background: ${myUser.avatar};">${myUser.name[0]}</div>
+        <div class="public-message-content">
+          <div class="public-message-header">
+            <span class="public-message-name">${myUser.name}</span>
+            <span class="public-message-time">刚刚</span>
+          </div>
+          <div class="public-message-text">${messageText}</div>
+        </div>
+      `;
+
+      publicMessages.appendChild(messageElement);
+      publicMessages.scrollTop = publicMessages.scrollHeight;
+      publicInput.value = '';
+      publicSendBtn.disabled = true;
+
+      // Simulate auto-reply from another user
+      setTimeout(() => {
+        const randomUser = publicUsers[Math.floor(Math.random() * publicUsers.length)];
+        const replyElement = document.createElement('div');
+        replyElement.className = 'public-message';
+        replyElement.innerHTML = `
+          <div class="msg-avatar" style="background: ${randomUser.avatar};">${randomUser.name[0]}</div>
+          <div class="public-message-content">
+            <div class="public-message-header">
+              <span class="public-message-name">${randomUser.name}</span>
+              <span class="public-message-time">刚刚</span>
+            </div>
+            <div class="public-message-text">${autoReplies[replyIndex % autoReplies.length]}</div>
+          </div>
+        `;
+        publicMessages.appendChild(replyElement);
+        publicMessages.scrollTop = publicMessages.scrollHeight;
+        replyIndex++;
+      }, 800 + Math.random() * 700);
+    }
+
+    // Category Pills
+    const categoryPills = document.querySelectorAll('.category-pill');
+    categoryPills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        categoryPills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+      });
+    });
+
+    // Like Buttons
+    const likeButtons = document.querySelectorAll('.post-action.like');
+    likeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.classList.toggle('liked');
+        const icon = btn.querySelector('i');
+        const span = btn.querySelector('span');
+        
+        if (btn.classList.contains('liked')) {
+          icon.classList.remove('ph-heart');
+          icon.classList.add('ph-heart-fill');
+          span.textContent = parseInt(span.textContent) + 1;
+        } else {
+          icon.classList.remove('ph-heart-fill');
+          icon.classList.add('ph-heart');
+          span.textContent = parseInt(span.textContent) - 1;
+        }
+      });
+    });
+
+    // Simulate real-time messages from other users
+    function simulateIncomingMessage() {
+      const randomUser = publicUsers[Math.floor(Math.random() * publicUsers.length)];
+      const messages = [
+        '有人知道 iOS 18 什么时候正式发布吗？',
+        '这个社区太棒了！',
+        '学习到了新东西',
+        '#WWDC24 期待中',
+        '有人用过 SwiftUI 4.0 吗？',
+        '设计语言进化论'
+      ];
+      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+      
+      const messageElement = document.createElement('div');
+      messageElement.className = 'public-message';
+      messageElement.innerHTML = `
+        <div class="msg-avatar" style="background: ${randomUser.avatar};">${randomUser.name[0]}</div>
+        <div class="public-message-content">
+          <div class="public-message-header">
+            <span class="public-message-name">${randomUser.name}</span>
+            <span class="public-message-time">刚刚</span>
+          </div>
+          <div class="public-message-text">${randomMsg}</div>
+        </div>
+      `;
+      publicMessages.appendChild(messageElement);
+      publicMessages.scrollTop = publicMessages.scrollHeight;
+    }
+
+    // Random incoming message every 8-15 seconds
+    setInterval(() => {
+      if (Math.random() > 0.3) {
+        simulateIncomingMessage();
+      }
+    }, 8000 + Math.random() * 7000);
+    
+    // 初始化头像文字
+    updateAvatarText(settingsName.textContent);
+  </script>
+</body>
+</html>
