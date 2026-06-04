@@ -2287,7 +2287,7 @@
     // Supabase Backend (async load)
     const SUPABASE_URL = 'https://rjwoqkyegkdqwoeckzjq.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqd29xa3llZ2tkcXdvZWNrempxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MDI3MDAsImV4cCI6MjA5NTk3ODcwMH0.jxCfT-xi6iB0BK2HvC7vkKQemjlLUh2qQJRAUPRu-jI';
-    let supabase = null;
+    let supabaseClient = null;
     let supabaseReady = false;
     
     let deviceUid = localStorage.getItem('deviceUid') || generateDeviceUid();
@@ -2299,8 +2299,8 @@
     }
     
     function loadSupabaseScript(callback) {
-      if (window.supabase && window.supabase.createClient) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         supabaseReady = true;
         callback();
         return;
@@ -2308,9 +2308,11 @@
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
       script.onload = () => {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        supabaseReady = true;
-        callback();
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+          supabaseReady = true;
+          callback();
+        }
       };
       script.onerror = () => {
         console.warn('Supabase CDN failed to load, chat features disabled');
@@ -2321,7 +2323,7 @@
     async function heartbeatOnline() {
       if (!supabaseReady) return;
       const avatar = getAvatarColor(settingsName.textContent);
-      await supabase.from('online_users').upsert({
+      await supabaseClient.from('online_users').upsert({
         user_id: deviceUid,
         nickname: settingsName.textContent,
         avatar_seed: avatar,
@@ -2333,9 +2335,9 @@
       if (!supabaseReady) return;
       const cutoff = new Date(Date.now() - 30000).toISOString();
       
-      await supabase.from('online_users').delete().lt('last_seen', cutoff);
+      await supabaseClient.from('online_users').delete().lt('last_seen', cutoff);
       
-      const { data } = await supabase.from('online_users').select('*').order('last_seen', { ascending: false });
+      const { data } = await supabaseClient.from('online_users').select('*').order('last_seen', { ascending: false });
       const users = data || [];
       updateOnlineUsers(users.map(u => ({
         uid: u.user_id,
@@ -2480,7 +2482,7 @@
         return;
       }
       
-      const { error } = await supabase.from('chat_messages').insert({
+      const { error } = await supabaseClient.from('chat_messages').insert({
         user_id: deviceUid,
         nickname: settingsName.textContent,
         avatar_seed: avatar,
@@ -2498,7 +2500,7 @@
     // Init Supabase after async load
     loadSupabaseScript(() => {
       // Realtime subscription
-      supabase
+      supabaseClient
         .channel('public-chat')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
           const msg = payload.new;
@@ -2512,7 +2514,7 @@
         })
         .subscribe();
       
-      supabase
+      supabaseClient
         .channel('online-presence')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'online_users' }, () => {
           loadOnlineUsers();
@@ -2529,7 +2531,7 @@
       
       window.addEventListener('beforeunload', () => {
         if (supabaseReady) {
-          supabase.from('online_users').delete().eq('user_id', deviceUid);
+          supabaseClient.from('online_users').delete().eq('user_id', deviceUid);
         }
       });
     });
