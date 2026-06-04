@@ -2471,6 +2471,7 @@
       }
       
       const avatar = getAvatarColor(settingsName.textContent);
+      const now = new Date().toISOString();
       
       const { error } = await supabase.from('chat_messages').insert({
         user_id: deviceUid,
@@ -2479,7 +2480,16 @@
         message: messageText
       });
       
-      if (error) console.error('Send failed:', error);
+      if (error) {
+        console.error('Send failed:', error);
+      } else {
+        addMessageToUI({
+          user_name: settingsName.textContent,
+          avatar: avatar,
+          content: messageText,
+          created_at: now
+        });
+      }
       
       publicInput.value = '';
       publicSendBtn.disabled = true;
@@ -2492,6 +2502,7 @@
         .channel('public-chat')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
           const msg = payload.new;
+          if (msg.user_id === deviceUid) return;
           addMessageToUI({
             user_name: msg.nickname,
             avatar: msg.avatar_seed,
