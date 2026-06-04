@@ -2313,6 +2313,7 @@
 
         socket.on('newMessage', (message) => {
           addMessageToUI(message);
+          saveLocalMessages(message);
         });
 
         socket.on('onlineUsers', (data) => {
@@ -2386,7 +2387,21 @@
       }
     }
     
+    function getLocalMessages() {
+      try {
+        return JSON.parse(localStorage.getItem('localMessages') || '[]');
+      } catch (e) { return []; }
+    }
+
+    function saveLocalMessages(messages) {
+      const all = getLocalMessages();
+      all.unshift(messages);
+      if (all.length > 100) all.length = 100;
+      localStorage.setItem('localMessages', JSON.stringify(all));
+    }
+
     async function loadMessages() {
+      let loaded = false;
       try {
         const response = await fetch(`${API_BASE}/api/messages`);
         if (response.ok) {
@@ -2403,10 +2418,26 @@
             } else {
               data.messages.forEach(msg => addMessageToUI(msg));
             }
+            loaded = true;
           }
         }
       } catch (e) {
-        console.log('Using local mode for messages');
+        console.log('Backend unreachable, using local storage');
+      }
+
+      if (!loaded) {
+        const localMessages = getLocalMessages();
+        publicMessages.innerHTML = '';
+        if (localMessages.length === 0) {
+          publicMessages.innerHTML = `
+            <div class="empty-state">
+              <i class="ph ph-message-circle"></i>
+              <p>暂无消息，快来发表第一条吧！</p>
+            </div>
+          `;
+        } else {
+          localMessages.reverse().forEach(msg => addMessageToUI(msg));
+        }
       }
     }
     
@@ -2482,13 +2513,15 @@
         content: messageText
       };
 
+      const now = new Date().toISOString();
+      const messageWithTime = { ...userData, created_at: now };
+
       if (socket && socket.connected) {
         socket.emit('sendMessage', userData);
+        saveLocalMessages(messageWithTime);
       } else {
-        addMessageToUI({
-          ...userData,
-          created_at: new Date().toISOString()
-        });
+        addMessageToUI(messageWithTime);
+        saveLocalMessages(messageWithTime);
       }
 
       publicInput.value = '';
