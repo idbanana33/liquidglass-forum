@@ -2463,15 +2463,22 @@
       const messageText = publicInput.value.trim();
       if (!messageText) return;
       
+      const avatar = getAvatarColor(settingsName.textContent);
+      const now = new Date().toISOString();
+      
+      addMessageToUI({
+        user_name: settingsName.textContent,
+        avatar: avatar,
+        content: messageText,
+        created_at: now
+      });
+      
       if (!supabaseReady) {
-        console.warn('Supabase not ready, message not sent');
+        console.warn('Supabase not ready, message only saved locally');
         publicInput.value = '';
         publicSendBtn.disabled = true;
         return;
       }
-      
-      const avatar = getAvatarColor(settingsName.textContent);
-      const now = new Date().toISOString();
       
       const { error } = await supabase.from('chat_messages').insert({
         user_id: deviceUid,
@@ -2482,13 +2489,6 @@
       
       if (error) {
         console.error('Send failed:', error);
-      } else {
-        addMessageToUI({
-          user_name: settingsName.textContent,
-          avatar: avatar,
-          content: messageText,
-          created_at: now
-        });
       }
       
       publicInput.value = '';
